@@ -1,91 +1,90 @@
 # CueMap
 
-**Task-Aware Signaling for Human–Agent Delegation**
+CueMap is the research code and data workspace for **Task-Aware Delegation Cues for LLM Agents**. The project studies how offline pairwise preference data can be transformed into task-aware signals that help people decide when to delegate to an LLM agent, when to request an auditor, and when extra verification is needed.
 
-This repository contains the analysis code and artifacts for our paper on deriving **task-conditioned collaboration signals** (Capability Profiles and Coordination-Risk Cues) from large-scale human preference data (Chatbot Arena), and validating them via two predictive probes:
-- **Task A:** Winner prediction (multinomial logistic regression)
-- **Task B:** Difficulty prediction (ridge regression)
+The core idea is to move beyond a single global model ranking. CueMap first induces an interpretable task taxonomy from Chatbot Arena prompts, then estimates task-conditioned model behavior:
 
----
+- **Capability Profiles**: per-task win-rate maps that describe which models tend to perform well for a given task cluster.
+- **Coordination-Risk Cues**: per-task disagreement or tie-rate priors that flag prompts where collaboration may be brittle.
+- **Delegation Signals**: lightweight cues that can support adaptive routing, common-ground verification, rationale disclosure, and accountability logs.
+
+## Paper
+
+- **Title**: Task-Aware Delegation Cues for LLM Agents
+- **Author**: Xingrui Gu
+- **arXiv**: [arXiv:2603.11011](https://arxiv.org/abs/2603.11011)
+- **PDF**: [https://arxiv.org/pdf/2603.11011](https://arxiv.org/pdf/2603.11011)
+- **DOI**: [10.48550/arXiv.2603.11011](https://doi.org/10.48550/arXiv.2603.11011)
 
 ## Repository Structure
 
-- `analysis/` — notebooks for the full pipeline
-  - `data_cleaning.ipynb` — load/clean Arena comparisons; export `complete_data_for_tasks_*.csv`
-  - `cluster.ipynb` — embed → reduce → KMeans (K=30); export cluster assignments
-  - `cluster_meaning.ipynb` — interpret clusters (keywords/labels) for reporting
-  - `winner_distribution.ipynb` — task-conditioned winner distributions (Capability Profile Map)
-  - `taskA_winner_classificiation.ipynb` — Task A: winner prediction (multinomial logistic regression)
-  - `taskB_hardness_score_prediction.ipynb` — Task B: difficulty prediction (ridge regression)
-  - `model_compare.ipynb` — regularization sweep + ablations summary
-  - `eda.ipynb` — dataset sanity checks / descriptive stats
+```text
+CueMap/
++-- analysis/
+|   +-- data_cleaning.ipynb
+|   +-- cluster.ipynb
+|   +-- cluster_meaning.ipynb
+|   +-- eda.ipynb
+|   +-- winner_distribution.ipynb
+|   +-- model_compare.ipynb
+|   +-- taskA_winner_classificiation.ipynb
+|   +-- taskB_hardness_score_prediction.ipynb
++-- data/
+|   +-- complete_data_for_tasks_deciphered.csv
+|   +-- complete_data_for_tasks_undeciphered.csv
+|   +-- hayden_cluster_train.csv
+|   +-- hayden_cluster_test.csv
+|   +-- prompt_embeddings.npy
+|   +-- response_a_embeddings.npy
+|   +-- response_b_embeddings.npy
+|   +-- taskA_results.csv
+|   +-- taskB_results.csv
+|   +-- ready_to_submit_tasks_AB.csv
++-- figures/
+    +-- Figure1.png
+    +-- ...
+    +-- all_clusters.png
+```
 
-- `data/` — processed datasets and embeddings
-  - `prompt_embeddings.npy`, `response_a_embeddings.npy`, `response_b_embeddings.npy`
-  - `complete_data_for_tasks_undeciphered.csv` / `..._deciphered.csv`
-  - `hayden_cluster_train.csv`, `hayden_cluster_test.csv` (+ `_deciphered`)
-  - `ready_to_submit_tasks_AB.csv`
-  - `taskA_results.csv`, `taskB_results.csv`
+## Analysis Pipeline
 
-- `figures/` — paper figures (`Figure1.png` ... `Figure13.png`, `all_clusters.png`)
+1. **Data cleaning**  
+   `analysis/data_cleaning.ipynb` merges Chatbot Arena pairwise comparisons, prompt/response embeddings, GPT-generated task topics, and prompt hardness scores.
 
-## Quickstart (Notebooks)
+2. **Task clustering**  
+   `analysis/cluster.ipynb` embeds unique task topics with SentenceTransformers, reduces them with UMAP, and groups them into 30 semantic task clusters using K-Means.
 
-> Recommended order to reproduce paper signals + experiments:
+3. **Cluster interpretation**  
+   `analysis/cluster_meaning.ipynb` maps numeric cluster IDs to human-readable labels such as `Mathematics, Mathematical`, `Programming, Python`, `Logic, Reasoning`, and `Storytelling, Role-playing`.
 
-1. **Data preparation**
-   - Run: `analysis/data_cleaning.ipynb`
-   - Outputs: cleaned comparison tables in `data/complete_data_for_tasks_*.csv`
+4. **Exploratory analysis**  
+   `analysis/eda.ipynb` and `analysis/winner_distribution.ipynb` examine task distributions, winner distributions, hardness scores, model win rates, and per-cluster model preference patterns.
 
-2. **Task typing (K=30)**
-   - Run: `analysis/cluster.ipynb`
-   - Outputs: cluster assignments + train/test splits
-     - `data/hayden_cluster_train.csv`
-     - `data/hayden_cluster_test.csv`
+5. **Predictive probes**  
+   `analysis/taskA_winner_classificiation.ipynb` predicts pairwise winners, while `analysis/taskB_hardness_score_prediction.ipynb` predicts prompt hardness. These probes test whether task clusters carry useful structure for delegation-related decisions.
 
-3. **Signals for collaboration**
-   - Capability profiles (task-conditioned win patterns):
-     - Run: `analysis/winner_distribution.ipynb`
-     - Outputs: `figures/Figure5.png` (Capability Profile Map)
-   - Coordination-risk cue (tie-rate / difficulty proxy by cluster):
-     - Run: `analysis/taskB_hardness_score_prediction.ipynb` (also produces risk-related plots)
-     - Outputs: `figures/Figure7.png` (Coordination Risk by Task Type)
+## Outputs
 
-4. **Validation probes (Experiments)**
-   - **Task A: winner prediction**
-     - Run: `analysis/taskA_winner_classificiation.ipynb`
-     - Outputs: `data/taskA_results.csv`
-   - **Task B: difficulty prediction**
-     - Run: `analysis/taskB_hardness_score_prediction.ipynb`
-     - Outputs: `data/taskB_results.csv`
-   - Regularization sweep + cluster-feature ablation summary:
-     - Run: `analysis/model_compare.ipynb`
-
-## Key Outputs (for the paper)
-
-- **Task taxonomy visualization**
-  - `figures/Figure1.png` / `figures/all_clusters.png`
-
-- **Capability Profile Map (winner vote distribution by cluster)**
-  - `figures/Figure5.png`
-
-- **Coordination Risk (uncertainty proxy by cluster)**
-  - `figures/Figure7.png`
-
-- **Experiment summaries**
-  - `data/taskA_results.csv` (Task A: accuracy under CV / settings)
-  - `data/taskB_results.csv` (Task B: MSE under CV / settings)
-
-## Data Notes
-
-- The dataset is derived from Chatbot Arena pairwise comparisons (single-turn prompts).
-- Labels include `{A, B, tie, invalid}` and are used directly in Task A.
-- Difficulty scores (1–10) are used for Task B where available.
+- `data/complete_data_for_tasks_deciphered.csv`: cleaned training data with readable task cluster labels.
+- `data/hayden_cluster_test_deciphered.csv`: test prompts with readable cluster labels.
+- `data/taskA_results.csv`: predicted winner labels for Task A.
+- `data/taskB_results.csv`: predicted hardness scores for Task B.
+- `data/ready_to_submit_tasks_AB.csv`: merged Task A and Task B output.
+- `figures/all_clusters.png`: model winner distributions across task clusters.
 
 ## Citation
 
-If you use this codebase, please cite the associated paper/preprint included with this repository.
+If you use this repository or build on the CueMap analysis, please cite:
+
+```bibtex
+@article{gu2026task,
+  title={Task-Aware Delegation Cues for LLM Agents},
+  author={Gu, Xingrui},
+  journal={arXiv preprint arXiv:2603.11011},
+  year={2026}
+}
+```
 
 ## License
 
-Research code released for reproducibility. Add your preferred license file if publishing.
+No license has been specified yet. Please contact the author before reusing or redistributing the repository contents.
